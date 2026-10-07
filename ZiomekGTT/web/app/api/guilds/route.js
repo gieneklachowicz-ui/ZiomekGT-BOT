@@ -1,33 +1,48 @@
 import { NextResponse } from "next/server";
-import {
-  getSession,
-  getUserGuilds,
-  userCanManageGuild,
-} from "../../../lib";
+import { getSession, getUserGuilds } from "../../../lib";
 
 export async function GET() {
   try {
-    const s = await getSession();
+    const session = await getSession();
 
-    if (!s) {
+    if (!session) {
       return NextResponse.json(
         { error: "UNAUTHORIZED" },
         { status: 401 }
       );
     }
 
-    const userGuilds = await getUserGuilds(s);
+    const guilds = await getUserGuilds(session);
 
-    const result = userGuilds
-      .filter((g: any) => userCanManageGuild(g, g))
-      .map((g: any) => ({
-        id: g.id,
-        name: g.name,
-        icon: g.icon,
-        owner: g.owner,
+    console.log("DISCORD GUILDS:", guilds);
+
+    const manageableGuilds = guilds
+      .filter((guild: any) => {
+        // Właściciel serwera
+        if (guild.owner === true) {
+          return true;
+        }
+
+        // Administrator
+        const permissions = BigInt(guild.permissions || "0");
+
+        // MANAGE_GUILD = 0x20
+        // ADMINISTRATOR = 0x8
+        return (
+          (permissions & 0x20n) !== 0n ||
+          (permissions & 0x8n) !== 0n
+        );
+      })
+      .map((guild: any) => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.icon,
+        owner: guild.owner === true,
       }));
 
-    return NextResponse.json(result);
+    console.log("MANAGEABLE GUILDS:", manageableGuilds);
+
+    return NextResponse.json(manageableGuilds);
   } catch (error) {
     console.error("GUILDS ERROR:", error);
 
@@ -36,7 +51,7 @@ export async function GET() {
         error:
           error instanceof Error
             ? error.message
-            : "Nie udało się pobrać serwerów.",
+            : "Nie udało się pobrać serwerów Discord.",
       },
       { status: 500 }
     );
