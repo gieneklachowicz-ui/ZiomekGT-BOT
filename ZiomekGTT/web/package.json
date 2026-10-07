@@ -1,0 +1,5 @@
+{
+  "name":"ziomekgt-panel","private":true,"version":"2.0.0",
+  "scripts":{"dev":"next dev","build":"next build","start":"next start"},
+  "dependencies":{"better-sqlite3":"^11.7.0","next":"15.5.0","react":"19.1.0","react-dom":"19.1.0"}
+}
