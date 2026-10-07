@@ -35,7 +35,7 @@ export default function Dashboard(){
     <label>Stopka</label><input value={cfg.panel_footer} onChange={e=>patch("panel_footer",e.target.value)}/>
    </article>
    <article className="panel"><h2>🔐 Prywatne zgłoszenia</h2><p className="muted">Te role dostaną dostęp do kanałów rekrutacyjnych.</p>
-    <div className="roles">{roles.filter(r=>r.name!=="@everyone").map(r=><label key={r.id}><input type="checkbox" checked={cfg.access_roles.includes(r.id)} onChange={e=>patch("access_roles",e.target.checked?[...cfg.access_roles,r.id]:cfg.access_roles.filter(x=>x!==r.id))}/>{r.name}</label>)}</div>
+    <div className="roles">{roles.filter(r=>r.name!=="@everyone").map(r=><label key={r.id}><input type="checkbox" checked={cfg.access_roles.includes(r.id)} onChange={e=>patch("access_roles",e.target.checked?Array.from(new Set([...cfg.access_roles,r.id])):cfg.access_roles.filter(x=>x!==r.id))}/>{r.name}</label>)}</div>
    </article>
   </div><article className="panel"><h2>🎯 Rangi i wymagania</h2><div className="roleGrid">
    {[["ticket","🎫"],["helper","🛠️"],["admin","🛡️"],["cowowner","👑"]].map(([k,e])=><div className="role" key={k}>

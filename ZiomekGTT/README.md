@@ -1,128 +1,46 @@
-# ZiomekGT — pełny OAuth2 + API
+# ZiomekGT — OAuth2 + Vercel + Upstash Redis
 
-## Co zostało dodane
+Projekt jest przygotowany do rozdzielenia na:
+- **web/** → Vercel (Next.js)
+- **bot/** → dowolny host uruchamiający Pythona 24/7
+- **Upstash Redis** → wspólna baza konfiguracji i zgłoszeń
 
-- Logowanie przez Discord OAuth2.
-- Sesja HTTP-only podpisana HMAC.
-- Lista serwerów użytkownika.
-- Pokazywane są tylko serwery, gdzie użytkownik ma `Manage Server`/Administratora i gdzie bot jest obecny.
-- Kanały i role są pobierane z Discord API przez token bota.
-- API konfiguracji jest chronione OAuth2 + sprawdzeniem uprawnień.
-- Konfiguracja panelu:
-  - kanał,
-  - tytuł,
-  - opis,
-  - stopka,
-  - włączanie rang,
-  - nazwy rang,
-  - email,
-  - 13+,
-  - mutacja głosu,
-  - role mające dostęp do prywatnych zgłoszeń.
-- Bot sprawdza bazę co 8 sekund i automatycznie aktualizuje panel po zmianie konfiguracji.
+## 1. Upstash
+Utwórz darmową bazę Redis w Upstash i skopiuj:
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
 
-## 1. Discord Developer Portal
+## 2. Vercel
+Importuj repozytorium jako projekt Vercel.
+W ustawieniach projektu ustaw **Root Directory = `web`**.
+Dodaj zmienne:
+- `DISCORD_CLIENT_ID`
+- `DISCORD_CLIENT_SECRET`
+- `DISCORD_BOT_TOKEN`
+- `SESSION_SECRET`
+- `NEXT_PUBLIC_APP_URL` = adres Vercel, np. `https://ziomekgt-panel.vercel.app`
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
 
-W aplikacji Discord:
+## 3. Discord Developer Portal
+W OAuth2 → Redirects dodaj:
+`https://TWOJA-DOMENA.vercel.app/api/auth/callback`
 
-### OAuth2 → General
+Scopes OAuth2 używane przez panel: `identify guilds`.
 
-Redirect URL:
+## 4. Bot
+W `bot/.env` ustaw:
+- `DISCORD_TOKEN`
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
 
-```text
-http://localhost:3000/api/auth/callback
-```
-
-Po wrzuceniu strony na domenę zmień na:
-
-```text
-https://TWOJA-DOMENA/api/auth/callback
-```
-
-Potrzebujesz:
-- Client ID
-- Client Secret
-
-### Bot
-
-Skopiuj token bota.
-
-Bot powinien mieć:
-- View Channels
-- Send Messages
-- Embed Links
-- Read Message History
-- Manage Channels
-
-Bot musi być dodany do serwera.
-
-## 2. Uruchomienie
-
-### Bot
-
-```powershell
-cd bot
-py -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Skopiuj `.env.example` do `.env`:
-
-```env
-DISCORD_TOKEN=...
-DATABASE_FILE=../ziomekgt.db
-```
+Zainstaluj:
+`pip install -r requirements.txt`
 
 Uruchom:
+`python bot.py`
 
-```powershell
-python bot.py
-```
-
-### Web
-
-W drugim terminalu:
-
-```powershell
-cd web
-npm install
-```
-
-Skopiuj `.env.local.example` do `.env.local`:
-
-```env
-DISCORD_CLIENT_ID=...
-DISCORD_CLIENT_SECRET=...
-DISCORD_BOT_TOKEN=...
-SESSION_SECRET=minimum-32-znaki-losowe
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-DATABASE_FILE=../ziomekgt.db
-```
-
-Uruchom:
-
-```powershell
-npm run dev
-```
-
-Otwórz:
-
-```text
-http://localhost:3000
-```
+Bot i Vercel muszą używać **tej samej bazy Upstash**.
 
 ## Ważne
-
-Bot i panel muszą mieć dostęp do TEJ SAMEJ bazy SQLite, jeśli używasz SQLite.
-
-Jeśli bot i panel będą na dwóch osobnych hostingach, nie używaj lokalnego SQLite jako wspólnej bazy. Wtedy trzeba przełączyć projekt na PostgreSQL/Redis.
-
-Nigdy nie publikuj:
-- DISCORD_TOKEN
-- DISCORD_BOT_TOKEN
-- DISCORD_CLIENT_SECRET
-- SESSION_SECRET
-- pliku `.env`
-
-OAuth2 nie daje stronie uprawnień do serwera. Strona sprawdza, czy użytkownik ma `Manage Server` lub Administratora, a operacje Discord API wykonuje bot swoim tokenem.
+Nie wrzucaj `.env` ani żadnych tokenów do GitHuba.
