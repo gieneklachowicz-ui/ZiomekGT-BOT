@@ -19,13 +19,13 @@ export function redis() {
   return Redis.fromEnv();
 }
 
-export const configKey = (gid: string) =>
+export const configKey = (gid) =>
   `ziomekgt:config:${gid}`;
 
-export const rolesKey = (gid: string) =>
+export const rolesKey = (gid) =>
   `ziomekgt:roles:${gid}`;
 
-export const applicationsKey = (gid: string) =>
+export const applicationsKey = (gid) =>
   `ziomekgt:applications:${gid}`;
 
 export function defaults() {
@@ -62,10 +62,12 @@ export function defaults() {
     helper_name: "Helper",
     admin_name: "Administrator",
     cowowner_name: "Co-Owner",
+
+    access_roles: [],
   };
 }
 
-export async function getConfig(gid: string) {
+export async function getConfig(gid) {
   const r = redis();
   const saved = await r.get(configKey(gid));
 
@@ -75,7 +77,7 @@ export async function getConfig(gid: string) {
   };
 }
 
-export async function setConfig(gid: string, data: any) {
+export async function setConfig(gid, data) {
   const r = redis();
 
   await r.set(configKey(gid), data);
@@ -83,13 +85,13 @@ export async function setConfig(gid: string, data: any) {
   return data;
 }
 
-export async function getAccessRoles(gid: string) {
+export async function getAccessRoles(gid) {
   return (await redis().smembers(rolesKey(gid))) || [];
 }
 
 export async function setAccessRoles(
-  gid: string,
-  ids: string[]
+  gid,
+  ids
 ) {
   const r = redis();
 
@@ -109,7 +111,7 @@ export async function setAccessRoles(
    SESSION
 ========================= */
 
-export function sessionEncode(data: any) {
+export function sessionEncode(data) {
   const secret = process.env.SESSION_SECRET;
 
   console.log("SESSION CHECK:", {
@@ -138,7 +140,7 @@ export function sessionEncode(data: any) {
   return `${payload}.${sig}`;
 }
 
-export function sessionDecode(value: string | undefined) {
+export function sessionDecode(value) {
   try {
     const secret = process.env.SESSION_SECRET;
 
@@ -189,7 +191,21 @@ export async function getSession() {
 
   const value = jar.get(COOKIE)?.value;
 
-  return sessionDecode(value);
+  console.log("GET SESSION - Cookie check:", {
+    hasCookie: !!value,
+    cookieLength: value?.length || 0,
+  });
+
+  const decoded = sessionDecode(value);
+
+  console.log("GET SESSION - Decoded session:", {
+    decoded: !!decoded,
+    hasUserId: !!decoded?.userId,
+    hasAccessToken: !!decoded?.accessToken,
+    accessTokenLength: decoded?.accessToken?.length || 0,
+  });
+
+  return decoded;
 }
 
 /* =========================
@@ -197,8 +213,8 @@ export async function getSession() {
 ========================= */
 
 export async function discord(
-  pathname: string,
-  options: RequestInit = {}
+  pathname,
+  options = {}
 ) {
   const botToken = process.env.DISCORD_BOT_TOKEN;
 
@@ -236,8 +252,8 @@ export async function discord(
 ========================= */
 
 export function userCanManageGuild(
-  guild: any,
-  user: any
+  guild,
+  user
 ) {
   if (!guild || !user) {
     return false;
@@ -262,7 +278,7 @@ export function userCanManageGuild(
 ========================= */
 
 export async function getUserGuilds(
-  session: any
+  session
 ) {
   if (!session?.accessToken) {
     throw new Error(
@@ -303,4 +319,32 @@ export function redirectUri() {
   }
 
   return `${appUrl}/api/auth/callback`;
+}
+
+/* =========================
+   BOT OAUTH2
+========================= */
+
+export function botInviteUrl(guildId) {
+  const clientId = process.env.DISCORD_CLIENT_ID;
+
+  if (!clientId) {
+    throw new Error(
+      "DISCORD_CLIENT_ID nie jest ustawiony w Environment Variables."
+    );
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    permissions: "8", // Administrator
+    scope: "bot applications.commands",
+    integration_type: "0",
+  });
+
+  if (guildId) {
+    params.set("guild_id", guildId);
+    params.set("disable_guild_select", "true");
+  }
+
+  return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }

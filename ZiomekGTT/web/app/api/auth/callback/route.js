@@ -6,6 +6,8 @@ export async function GET(req){
   const code=url.searchParams.get("code");
   if(!code)return NextResponse.redirect(new URL("/?error=oauth_cancelled",req.url));
 
+  console.log("CALLBACK - Received OAuth code");
+
   const body=new URLSearchParams({
     client_id:process.env.DISCORD_CLIENT_ID,
     client_secret:process.env.DISCORD_CLIENT_SECRET,
@@ -17,19 +19,48 @@ export async function GET(req){
     method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body
   });
   const token=await tokenRes.json();
-  if(!tokenRes.ok)return NextResponse.redirect(new URL("/?error=oauth_token",req.url));
+  if(!tokenRes.ok){
+    console.log("CALLBACK - Token exchange failed:", token);
+    return NextResponse.redirect(new URL("/?error=oauth_token",req.url));
+  }
+
+  console.log("CALLBACK - Token received:", {
+    hasAccessToken: !!token.access_token,
+    accessTokenLength: token.access_token?.length || 0,
+    tokenType: token.token_type,
+    scope: token.scope,
+  });
 
   const meRes=await fetch("https://discord.com/api/v10/users/@me",{
     headers:{Authorization:`Bearer ${token.access_token}`}
   });
   const me=await meRes.json();
-  if(!meRes.ok)return NextResponse.redirect(new URL("/?error=oauth_user",req.url));
+  if(!meRes.ok){
+    console.log("CALLBACK - User fetch failed:", me);
+    return NextResponse.redirect(new URL("/?error=oauth_user",req.url));
+  }
 
-  const res=NextResponse.redirect(new URL("/dashboard",req.url));
-  res.cookies.set("ziomekgt_session",sessionEncode({
+  console.log("CALLBACK - User info:", {
+    id: me.id,
+    username: me.username,
+    globalName: me.global_name,
+  });
+
+  const sessionData = {
     userId:me.id,username:me.username,globalName:me.global_name||me.username,
     avatar:me.avatar||null,accessToken:token.access_token
-  }),{
+  };
+
+  const encodedSession = sessionEncode(sessionData);
+
+  console.log("CALLBACK - Session encoded:", {
+    encodedLength: encodedSession.length,
+    hasUserId: !!sessionData.userId,
+    hasAccessToken: !!sessionData.accessToken,
+  });
+
+  const res=NextResponse.redirect(new URL("/dashboard",req.url));
+  res.cookies.set("ziomekgt_session",encodedSession,{
     httpOnly:true,secure:process.env.NODE_ENV==="production",
     sameSite:"lax",path:"/",maxAge:60*60*24*7
   });

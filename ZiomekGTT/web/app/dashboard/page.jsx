@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const [me, setMe] = useState<any>(null);
-  const [guilds, setGuilds] = useState<any[]>([]);
+  const [me, setMe] = useState(null);
+  const [guilds, setGuilds] = useState([]);
   const [gid, setGid] = useState("");
-  const [channels, setChannels] = useState<any[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [cfg, setCfg] = useState<any>(null);
+  const [channels, setChannels] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [cfg, setCfg] = useState(null);
   const [msg, setMsg] = useState("");
+  const [botInGuild, setBotInGuild] = useState(null);
 
   useEffect(() => {
     checkLogin();
@@ -81,9 +82,10 @@ export default function Dashboard() {
     }
   }
 
-  async function selectGuild(id: string) {
+  async function selectGuild(id) {
     setGid(id);
     setMsg("");
+    setBotInGuild(null);
 
     if (!id) {
       setChannels([]);
@@ -95,7 +97,7 @@ export default function Dashboard() {
     try {
       setMsg("Ładowanie konfiguracji serwera...");
 
-      const [channelsRes, rolesRes, configRes] =
+      const [channelsRes, rolesRes, configRes, botStatusRes] =
         await Promise.all([
           fetch(`/api/guilds/${id}/channels`, {
             cache: "no-store",
@@ -106,15 +108,22 @@ export default function Dashboard() {
           fetch(`/api/guilds/${id}/config`, {
             cache: "no-store",
           }),
+          fetch(`/api/guilds/${id}/bot-status`, {
+            cache: "no-store",
+          }),
         ]);
 
       const channelsData = await channelsRes.json();
       const rolesData = await rolesRes.json();
       const configData = await configRes.json();
+      const botStatusData = await botStatusRes.json();
 
       console.log("CHANNELS:", channelsData);
       console.log("ROLES:", rolesData);
       console.log("CONFIG:", configData);
+      console.log("BOT STATUS:", botStatusData);
+
+      setBotInGuild(botStatusData?.botInGuild || false);
 
       if (!channelsRes.ok) {
         setMsg(
@@ -157,8 +166,8 @@ export default function Dashboard() {
     }
   }
 
-  function patch(key: string, value: any) {
-    setCfg((current: any) => ({
+  function patch(key, value) {
+    setCfg((current) => ({
       ...current,
       [key]: value,
     }));
@@ -202,6 +211,26 @@ export default function Dashboard() {
     });
 
     window.location.href = "/";
+  }
+
+  function getBotInviteUrl(guildId) {
+    const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+
+    if (!clientId) {
+      console.error("NEXT_PUBLIC_DISCORD_CLIENT_ID not set");
+      return "#";
+    }
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      permissions: "8",
+      scope: "bot applications.commands",
+      integration_type: "0",
+      guild_id: guildId,
+      disable_guild_select: "true",
+    });
+
+    return `https://discord.com/oauth2/authorize?${params.toString()}`;
   }
 
   if (!me) {
@@ -257,6 +286,23 @@ export default function Dashboard() {
               </option>
             ))}
           </select>
+
+          {gid && botInGuild !== null && (
+            <div className="bot-status">
+              {botInGuild ? (
+                <span className="success">✅ Bot jest już na tym serwerze</span>
+              ) : (
+                <a
+                  href={getBotInviteUrl(gid)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="add-bot-btn"
+                >
+                  ➕ Dodaj bota
+                </a>
+              )}
+            </div>
+          )}
 
           {guilds.length === 0 && (
             <p className="muted">
@@ -370,7 +416,7 @@ export default function Dashboard() {
                                 patch(
                                   "access_roles",
                                   accessRoles.filter(
-                                    (x: string) =>
+                                    (x) =>
                                       x !== role.id
                                   )
                                 );
