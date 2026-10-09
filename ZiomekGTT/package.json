@@ -1,0 +1,24 @@
+{
+  "name": "ziomekgt-bot",
+  "version": "1.0.0",
+  "description": "Discord bot ZiomekGT z systemem rekrutacji",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "register-commands": "node src/utils/register-commands.js",
+    "dev": "node --watch src/index.js",
+    "download-avatar": "node scripts/download-avatar.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "recruitment"
+  ],
+  "author": "ZiomekGT",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  }
+}
